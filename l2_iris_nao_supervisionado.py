@@ -1,211 +1,270 @@
 '''
     Objetivo é demontra o uso de algoritmos de ML em aprendizado não supervisionado, no caso da identificação de clusters em dados de texto (flor de Iris).
 
-    Estrutura do Projeto
-Leitura e Carregamento dos Dados
+    ||> Estrutura do Projeto
 
-Ler o dataset Iris (que não possui um atributo classificador explícito para o aprendizado não supervisionado).
-Exibir as características dos dados: dimensões, tipos de atributos, e distribuição.
-Mostrar a estrutura completa dos dados no Dashboard.
-Estatística Descritiva
+        |> Leitura e Carregamento dos Dados
 
-Exibir métricas estatísticas como: média, mediana, desvio padrão, valores mínimos/máximos.
-Gerar visualizações de distribuições como histogramas e boxplots para cada atributo do dataset usando Plotly.
-Divisão dos Dados
+            Carregar o dataset Iris e exibir as características no dashboard (dimensões, tipos de atributos, e estatísticas descritivas).
+            Exibir a estrutura completa dos dados no dashboard, utilizando componentes de tabelas interativas do Dash.
+            Estatística Descritiva e Visualização Interativa
 
-Separar os dados em 70% para treino e 30% para teste.
-Avaliar a necessidade dessa divisão, já que, em aprendizado não supervisionado, muitas vezes não se trabalha diretamente com treino e teste da mesma forma que em aprendizado supervisionado.
-Escolha de Algoritmos Não Supervisionados
+            Calcular e exibir estatísticas descritivas no dashboard (média, mediana, desvio padrão, valores mínimos/máximos).
+            Criar visualizações interativas de distribuições usando Plotly (histogramas e boxplots) para cada atributo do dataset.
+            Aplicação dos Algoritmos de Agrupamento
 
-Explorar dois algoritmos de aprendizado não supervisionado:
-K-means (agrupamento baseado em centroides).
-DBSCAN (agrupamento baseado em densidade, que pode lidar com ruído e dados de forma mais flexível).
-Demonstrar a importância da escolha do algoritmo, comparando os resultados dos dois modelos no Dashboard.
-Matriz de Confusão e Métricas de Avaliação
+            Aplicar o algoritmo K-means e visualizar os clusters no dashboard, utilizando gráficos de dispersão em 2D e 3D para facilitar a análise dos clusters.
+            Calcular e exibir as métricas de avaliação (Silhouette Score, Calinski-Harabasz Index, e Davies-Bouldin Index) diretamente no dashboard.
+            Em seguida, aplicar o algoritmo DBSCAN, repetir as visualizações e métricas para possibilitar uma comparação direta com o K-means.
+            Comparação e Conclusão
 
-Gerar uma matriz de confusão (mesmo em aprendizado não supervisionado, ela pode ser gerada após atribuir rótulos aos clusters).
-Calcular métricas de avaliação: precisão, recall, e F1-score. (Neste caso, teremos que associar os clusters formados pelos algoritmos com as classes verdadeiras do conjunto de dados Iris para calcular essas métricas.)
-Criação do Dashboard (com Plotly e Dash)
+            Incluir uma seção no dashboard para comparação entre os algoritmos, destacando as métricas e visualizações para facilitar a análise.
+            Implementação do Projeto Usando Dash e Plotly
+            Vou começar com a implementação do Dash para estruturar o dashboard e integrar os gráficos e as análises. Abaixo está o esqueleto inicial do código, que vai construir o dashboard com todas as funcionalidades descritas:
+        
+        ||> Ajustes e Novas Funcionalidades
 
-Criar um Dashboard interativo que exiba:
-Características do dataset (dimensão, atributos, etc.).
-Estatísticas descritivas.
-Visualizações dos dados (histogramas, boxplots).
-Resultados dos modelos (clusters e matriz de confusão).
+            Exibição das Métricas de Análise:
+
+            Adicionar as métricas de avaliação para cada algoritmo (Silhouette Score, Calinski-Harabasz Index, Davies-Bouldin Index) diretamente no dashboard após o clique no botão.
+            Apresentar as métricas em um formato claro e legível para facilitar a interpretação.
+            Gráficos de Clusters:
+
+            Incluir gráficos de dispersão 2D que mostram os clusters formados por cada algoritmo (K-means e DBSCAN) usando redução de dimensionalidade (PCA).
+            Destacar visualmente os clusters com cores e legendas para facilitar a interpretação.
+            Curva de Elbow para K-means:
+
+            Adicionar um gráfico da Curva de Elbow para ajudar na escolha do número ideal de clusters, mostrando a variação da inércia (soma das distâncias ao centroide) conforme aumentamos o número de clusters.
+            Comparação dos Clusters com as Classes Originais:
+
+            Incluir uma análise detalhada no dashboard para mostrar como os clusters formados pelo K-means e DBSCAN se comparam com as classes originais do dataset (Setosa, Versicolor, Virginica).
+            Exibir um gráfico de barras que mostra a distribuição real e a distribuição encontrada em cada cluster.
+            Conclusão Textual:
+
+            Adicionar um texto explicativo ao final do dashboard, resumindo os resultados e comparando os métodos, destacando qual algoritmo se aproxima mais da distribuição real.
 
 '''
 
 # Importando as bibliotecas necessárias
+
+import dash
+from dash import dcc, html, dash_table
+from dash.dependencies import Input, Output, State
 import pandas as pd
 import numpy as np
 from sklearn.datasets import load_iris
 from sklearn.cluster import KMeans, DBSCAN
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 import plotly.express as px
-from dash import Dash, dcc, html
-from dash.dependencies import Input, Output
+import plotly.graph_objects as go
 
-# Função para ler o conjunto de dados Iris e exibir suas características
+# Leitura e carregamento dos dados
+data = load_iris()
+df = pd.DataFrame(data.data, columns=data.feature_names)
+df['target'] = data.target
+target_names = ['Setosa', 'Versicolor', 'Virginica']
 
+# Inicializando a aplicação Dash
+app = dash.Dash(__name__)
 
-def funcao_le_dados():
-    iris = load_iris()
-    df = pd.DataFrame(data=iris.data, columns=iris.feature_names)
-    return df, iris.target
+# Layout do Dashboard
+app.layout = html.Div([
+    html.H1("Dashboard de Clustering - Dataset Iris",
+            style={'text-align': 'center'}),
 
-# Função para calcular estatísticas descritivas (média, mediana, desvio padrão, etc.)
+    # Tabela de visualização dos dados
+    html.H2("Estrutura Completa dos Dados"),
+    dash_table.DataTable(
+        id='datatable',
+        columns=[{"name": i, "id": i} for i in df.columns],
+        data=df.to_dict('records'),
+        page_size=10
+    ),
 
+    # Estatísticas descritivas
+    html.H2("Estatísticas Descritivas"),
+    html.Div(id='stats-output'),
 
-def estatisticas_descritivas(df):
-    estatisticas = df.describe()
-    return estatisticas
+    # Seção para visualizações
+    html.H2("Visualizações de Distribuição"),
+    dcc.Dropdown(
+        id='dropdown-attribute',
+        options=[{'label': col, 'value': col} for col in df.columns[:-1]],
+        value='sepal length (cm)',
+        clearable=False
+    ),
+    dcc.Graph(id='histogram'),
+    dcc.Graph(id='boxplot'),
 
-# Função para criar histogramas e boxplots usando Plotly
+    # Curva de Elbow
+    html.H2("Curva de Elbow (K-means)"),
+    dcc.Graph(id='elbow-curve'),
 
+    # Seção para agrupamento e métricas
+    html.H2("Clustering e Métricas"),
+    html.Button('Aplicar K-means', id='kmeans-button', n_clicks=0),
+    html.Button('Aplicar DBSCAN', id='dbscan-button', n_clicks=0),
+    html.Div(id='metrics-output'),
+    dcc.Graph(id='scatter-plot-clusters'),
 
-def criar_graficos_estatisticos(df):
-    fig_histogramas = []
-    fig_boxplots = []
-    for column in df.columns:
-        fig_histogramas.append(px.histogram(
-            df, x=column, title=f"Histograma de {column}"))
-        fig_boxplots.append(px.box(df, y=column, title=f"Boxplot de {column}"))
-    return fig_histogramas, fig_boxplots
+    # Tabela comparativa de clusters
+    html.H2("Comparação entre Clusters Reais e Encontrados"),
+    dash_table.DataTable(
+        id='comparison-table',
+        columns=[
+            {"name": "Cluster Real", "id": "real"},
+            {"name": "K-means", "id": "kmeans"},
+            {"name": "DBSCAN", "id": "dbscan"}
+        ],
+        data=[],
+        style_cell={'textAlign': 'center'},
+        style_header={'fontWeight': 'bold'}
+    ),
 
-# Função para dividir os dados em treino (70%) e teste (30%)
+    # Conclusão
+    html.H2("Conclusão", style={'font-size': '20px', 'font-weight': 'bold'}),
+    html.Div(id='conclusion-output', style={'font-size': '16px'})
+])
 
-
-def dividir_dados(df):
-    X_train, X_test = train_test_split(df, test_size=0.3, random_state=42)
-    return X_train, X_test
-
-# Função para aplicar o algoritmo K-means
-
-
-def aplicar_kmeans(X, n_clusters=3):
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    clusters = kmeans.fit_predict(X_scaled)
-    return clusters, kmeans
-
-# Função para aplicar o algoritmo DBSCAN
-
-
-def aplicar_dbscan(X, eps=0.5, min_samples=5):
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    dbscan = DBSCAN(eps=eps, min_samples=min_samples)
-    clusters = dbscan.fit_predict(X_scaled)
-    return clusters, dbscan
-
-# Função para aplicar PCA e reduzir os dados para 2 dimensões
-
-
-def aplicar_pca(X, n_components=2):
-    pca = PCA(n_components=n_components)
-    X_pca = pca.fit_transform(X)
-    return X_pca
-
-# Função para visualizar os clusters usando Plotly
-
-
-def visualizar_clusters(X_pca, clusters, algoritmo_nome):
-    fig = px.scatter(
-        x=X_pca[:, 0], y=X_pca[:, 1], color=clusters,
-        title=f"Clusters Identificados - {algoritmo_nome}",
-        labels={'x': 'Componente Principal 1', 'y': 'Componente Principal 2'},
-        color_continuous_scale=px.colors.sequential.Viridis
-    )
-    return fig
-
-# Função para criar o Dashboard com Dash e Plotly
+# Callbacks para atualizar as visualizações e as métricas
 
 
-def criar_dashboard(estatisticas, fig_histogramas, fig_boxplots,
-                    fig_clusters_kmeans, fig_clusters_dbscan):
-    app = Dash(__name__)
-
-    # Extraindo a linha da média das estatísticas descritivas para o gráfico de barras
-    media_df = estatisticas.loc[['mean']].transpose().reset_index()
-
-    app.layout = html.Div([
-        html.H1("Dashboard de Agrupamento Não Supervisionado - Flor de Iris"),
-
-        # Exibir Estatísticas Descritivas
-        html.H2("Média dos Atributos"),
-        dcc.Graph(figure=px.bar(media_df, x='index',
-                  y='mean', title="Média dos Atributos")),
-
-        # Histogramas e Boxplots
-        html.H2("Distribuições dos Dados"),
-        dcc.Tabs(id="tabs-graficos", value='histogramas', children=[
-            dcc.Tab(label='Histogramas', value='histogramas'),
-            dcc.Tab(label='Boxplots', value='boxplots'),
-        ]),
-        html.Div(id='graficos-output'),
-
-        # Visualização dos clusters - K-means
-        html.H2("Clusters Identificados - K-means"),
-        dcc.Graph(figure=fig_clusters_kmeans),
-
-        # Visualização dos clusters - DBSCAN
-        html.H2("Clusters Identificados - DBSCAN"),
-        dcc.Graph(figure=fig_clusters_dbscan),
-    ])
-
-    @app.callback(
-        Output('graficos-output', 'children'),
-        [Input('tabs-graficos', 'value')]
-    )
-    def atualizar_graficos(tab_selecionada):
-        if tab_selecionada == 'histogramas':
-            return [dcc.Graph(figure=fig) for fig in fig_histogramas]
-        elif tab_selecionada == 'boxplots':
-            return [dcc.Graph(figure=fig) for fig in fig_boxplots]
-
-    # Rodar o app
-    app.run_server(debug=True)
-
-# ----------------------------------------
-# Fluxo Principal - Execução do Algoritmo
-# ----------------------------------------
-
-
-# 1. Carregar os dados
-df, y_true = funcao_le_dados()
-
-# 2. Gerar estatísticas descritivas
-estatisticas = estatisticas_descritivas(df)
-
-# 3. Criar gráficos descritivos (histogramas, boxplots)
-fig_histogramas, fig_boxplots = criar_graficos_estatisticos(df)
-
-# 4. Dividir os dados em treino e teste
-X_train, X_test = dividir_dados(df)
-
-# 5. Aplicar PCA aos dados de treino para reduzir para 2 dimensões
-X_pca = aplicar_pca(X_train, n_components=2)
-
-# 6. Aplicar K-means aos dados de treino
-clusters_kmeans, kmeans_model = aplicar_kmeans(X_train)
-
-# 7. Visualizar os clusters gerados pelo K-means
-fig_clusters_kmeans = visualizar_clusters(X_pca, clusters_kmeans, "K-means")
-
-# 8. Aplicar DBSCAN aos dados de treino
-clusters_dbscan, dbscan_model = aplicar_dbscan(X_train)
-
-# 9. Visualizar os clusters gerados pelo DBSCAN
-fig_clusters_dbscan = visualizar_clusters(X_pca, clusters_dbscan, "DBSCAN")
-
-# 10. Criar o Dashboard com todos os elementos
-criar_dashboard(
-    estatisticas,
-    fig_histogramas,
-    fig_boxplots,
-    fig_clusters_kmeans,
-    fig_clusters_dbscan
+@app.callback(
+    [Output('histogram', 'figure'),
+     Output('boxplot', 'figure')],
+    [Input('dropdown-attribute', 'value')]
 )
+def update_visualizations(attribute):
+    hist_fig = px.histogram(
+        df, x=attribute, title=f'Distribuição de {attribute}')
+    box_fig = px.box(df, y=attribute, title=f'Boxplot de {attribute}')
+    return hist_fig, box_fig
+
+
+@app.callback(
+    Output('stats-output', 'children'),
+    Input('datatable', 'data')
+)
+def display_statistics(data):
+    desc_stats = df.describe().reset_index()
+    return dash_table.DataTable(
+        columns=[{"name": i, "id": i} for i in desc_stats.columns],
+        data=desc_stats.to_dict('records')
+    )
+
+
+@app.callback(
+    Output('elbow-curve', 'figure'),
+    Input('datatable', 'data')
+)
+def update_elbow_curve(data):
+    inertia = []
+    k_values = range(1, 10)
+    for k in k_values:
+        kmeans = KMeans(n_clusters=k, random_state=42)
+        kmeans.fit(df.iloc[:, :-1])
+        inertia.append(kmeans.inertia_)
+
+    elbow_fig = go.Figure(data=go.Scatter(
+        x=list(k_values), y=inertia, mode='lines+markers'))
+    elbow_fig.update_layout(title='Curva de Elbow para K-means',
+                            xaxis_title='Número de Clusters (k)', yaxis_title='Inércia')
+    return elbow_fig
+
+
+@app.callback(
+    [Output('metrics-output', 'children'),
+     Output('scatter-plot-clusters', 'figure'),
+     Output('comparison-table', 'data'),
+     Output('conclusion-output', 'children')],
+    [Input('kmeans-button', 'n_clicks'),
+     Input('dbscan-button', 'n_clicks')],
+    [State('comparison-table', 'data')]
+)
+def apply_clustering(kmeans_clicks, dbscan_clicks, existing_data):
+    # Inicializa a estrutura de dados caso não exista
+    if not existing_data or len(existing_data) != 3:
+        existing_data = [{'real': f'{50} - {target_names[i]}',
+                          'kmeans': '', 'dbscan': ''} for i in range(3)]
+
+    if kmeans_clicks > 0:
+        # Aplicando K-means
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        kmeans_labels = kmeans.fit_predict(df.iloc[:, :-1])
+
+        # Métricas para K-means
+        silhouette_kmeans = silhouette_score(df.iloc[:, :-1], kmeans_labels)
+        calinski_kmeans = calinski_harabasz_score(
+            df.iloc[:, :-1], kmeans_labels)
+        davies_kmeans = davies_bouldin_score(df.iloc[:, :-1], kmeans_labels)
+
+        # Visualização dos clusters
+        pca = PCA(n_components=2)
+        reduced_data = pca.fit_transform(df.iloc[:, :-1])
+        scatter_fig = px.scatter(x=reduced_data[:, 0], y=reduced_data[:, 1], color=kmeans_labels,
+                                 title='Clusters do K-means (PCA 2D)', labels={'color': 'Cluster'})
+
+        # Atualiza a tabela com os resultados do K-means
+        for i in range(3):
+            kmeans_counts = sum(kmeans_labels == i)
+            existing_data[i]['kmeans'] = f'{kmeans_counts}'
+
+        metrics_text = f"""
+        Métricas do K-means:
+        - Silhouette Score: {silhouette_kmeans:.2f}
+        - Calinski-Harabasz Index: {calinski_kmeans:.2f}
+        - Davies-Bouldin Index: {davies_kmeans:.2f}
+        """
+
+        conclusion_text = """
+        O K-means conseguiu identificar clusters que, em grande parte, correspondem às classes originais (Setosa, Versicolor, Virginica).
+        No entanto, é importante observar a distribuição e a sobreposição entre as classes.
+        """
+
+        return metrics_text, scatter_fig, existing_data, conclusion_text
+
+    elif dbscan_clicks > 0:
+        # Aplicando DBSCAN
+        dbscan = DBSCAN(eps=0.5, min_samples=5)
+        dbscan_labels = dbscan.fit_predict(df.iloc[:, :-1])
+
+        # Métricas para DBSCAN
+        silhouette_dbscan = silhouette_score(
+            df.iloc[:, :-1], dbscan_labels) if len(set(dbscan_labels)) > 1 else 'N/A'
+        calinski_dbscan = calinski_harabasz_score(
+            df.iloc[:, :-1], dbscan_labels) if len(set(dbscan_labels)) > 1 else 'N/A'
+        davies_dbscan = davies_bouldin_score(
+            df.iloc[:, :-1], dbscan_labels) if len(set(dbscan_labels)) > 1 else 'N/A'
+
+        # Visualização dos clusters
+        pca = PCA(n_components=2)
+        reduced_data = pca.fit_transform(df.iloc[:, :-1])
+        scatter_fig = px.scatter(x=reduced_data[:, 0], y=reduced_data[:, 1], color=dbscan_labels,
+                                 title='Clusters do DBSCAN (PCA 2D)', labels={'color': 'Cluster'})
+
+        # Atualiza a tabela com os resultados do DBSCAN
+        for i in range(3):
+            dbscan_counts = sum((df['target'] == i) & (dbscan_labels != -1))
+            existing_data[i]['dbscan'] = f'{dbscan_counts}'
+
+        metrics_text = f"""
+        Métricas do DBSCAN:
+        - Silhouette Score: {silhouette_dbscan}
+        - Calinski-Harabasz Index: {calinski_dbscan}
+        - Davies-Bouldin Index: {davies_dbscan}
+        """
+
+        conclusion_text = """
+        O DBSCAN identificou clusters com base na densidade, o que pode resultar em uma segmentação diferente em relação ao K-means.
+        Isso pode ser útil para dados com formas mais complexas, mas é importante ajustar os parâmetros para obter bons resultados.
+        """
+
+        return metrics_text, scatter_fig, existing_data, conclusion_text
+
+    return "", {}, existing_data, ""
+
+
+# Executando o servidor Dash
+if __name__ == '__main__':
+    app.run_server(debug=True)
