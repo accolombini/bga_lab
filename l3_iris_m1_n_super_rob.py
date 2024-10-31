@@ -46,6 +46,8 @@ def verificar_dados_faltantes(dados):
     dados_faltantes = dados.isnull().sum()
     return dados_faltantes
 
+# Qualquer valor abaixo de: Q1 - 1.5×IQR ou acima de: Q3+1.5×IQR é considerado um outlier.
+
 
 def detectar_outliers(dados):
     # Detecção de outliers usando o IQR, com indicação das linhas específicas dos outliers
