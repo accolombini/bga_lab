@@ -1,5 +1,7 @@
 ## Projetos de aplicação de ML para Big Analytcs
 
+#### O ambiente virtual para esses laboratórios é o: bd_a
+
 **Importante:**  construir um exemplo de uma aplicação usando aprendizado supervisionado, quero explorar 
 todoas as funções estatísticas (estatística descritiva), utilizar a biblioteca plotly e dash para os 
 diagramas, precisamos além das funções estatísticas gerar a matriz de confusão e tirar todas as conclusões 
