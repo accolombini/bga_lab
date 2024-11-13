@@ -70,33 +70,37 @@
 
         ||> Nota: Algumas dessas ferramentas, como lasso_select e poly_select, são mais úteis para gráficos que permitem seleções e filtragens interativas. Dependendo do contexto do seu gráfico, você pode escolher quais ferramentas são mais apropriadas para oferecer uma experiência de visualização ideal.
 
-        ||> Importante -> para executar esse código, você precisa ter o Bokeh instalado em seu ambiente. Se você não o tem, você pode instalá-lo usando pip: pip install bokeh. E rodar o servidor bokeh serve no seu terminal: bokeh serve. => bokeh serve --show iris_bokeh_server.py
+        ||> Importante -> para executar esse código, você precisa ter o Bokeh instalado em seu ambiente. Se você não o tem, você pode instalá-lo usando pip: pip install bokeh. E rodar o servidor bokeh serve no seu terminal: bokeh serve. => bokeh serve --show l5_bokeh_fi.py
 
 '''
 
 # Importar bibliotecas necessárias
-import pandas as pd
-from bokeh.plotting import figure
+import pandas as pd  # Manipulação de dados
+from bokeh.plotting import figure  # Para criação de gráficos no Bokeh
+# Fonte de dados e widgets interativos
 from bokeh.models import ColumnDataSource, Select
-from bokeh.layouts import column
-from bokeh.io import curdoc
-import requests
-from io import StringIO
+from bokeh.layouts import column  # Organização do layout
+from bokeh.io import curdoc  # Integração com o servidor Bokeh
+import requests  # Para download de dados via HTTP
+from io import StringIO  # Manipulação de dados no formato de string como arquivos
 
 # Carregar o dataset Iris diretamente da web
+# URL do dataset Iris no repositório da UCI Machine Learning
 url = "https://archive.ics.uci.edu/ml/machine-learning-databases/iris/iris.data"
-response = requests.get(url)
+response = requests.get(url)  # Realizar a requisição HTTP para obter os dados
+# Carregar o dataset em um DataFrame com nomes de colunas especificados
 data = pd.read_csv(StringIO(response.text), header=None, names=[
                    "sepal_length", "sepal_width", "petal_length", "petal_width", "species"])
 
-# Criar uma fonte de dados para o gráfico
+# Criar uma fonte de dados para o gráfico, usando o DataFrame carregado
 source = ColumnDataSource(data)
 
 # Função para criar a figura de dispersão usando 'scatter'
 
 
 def create_figure(x_axis, y_axis):
-    # Definir a figura e as configurações básicas
+    # Definir a figura e configurações básicas
+    # Configura título, rótulos dos eixos e ferramentas de interação
     p = figure(title="Gráfico Interativo de Iris",
                x_axis_label=x_axis,
                y_axis_label=y_axis,
@@ -105,41 +109,47 @@ def create_figure(x_axis, y_axis):
                tools="pan,wheel_zoom,box_zoom,reset,hover,save")
 
     # Adicionar os dados de dispersão ao gráfico usando 'scatter'
+    # Representa cada espécie de flor com pontos personalizados
     p.scatter(x=x_axis, y=y_axis, source=source, size=8,
               color="navy", alpha=0.5, legend_field="species")
 
     # Personalizações adicionais
+    # Adiciona título e posição da legenda, permitindo ocultar itens ao clicar
     p.legend.title = "Espécies"
     p.legend.location = "top_left"
-    p.legend.click_policy = "hide"
+    p.legend.click_policy = "hide"  # Permite esconder espécies na legenda ao clicar
 
-    return p
+    return p  # Retorna a figura criada
 
 
 # Widgets interativos para seleção dos eixos
+# Dropdown para seleção da variável do eixo X
 x_select = Select(title="Eixo X", value="sepal_length", options=[
                   "sepal_length", "sepal_width", "petal_length", "petal_width"])
+# Dropdown para seleção da variável do eixo Y
 y_select = Select(title="Eixo Y", value="sepal_width", options=[
                   "sepal_length", "sepal_width", "petal_length", "petal_width"])
 
-# Criar a figura inicial
+# Criar a figura inicial com os valores padrão dos seletores
 p = create_figure(x_select.value, y_select.value)
 
-# Função de callback para atualizar o gráfico com base na seleção dos eixos
+# Função de callback para atualizar o gráfico quando os seletores são alterados
 
 
 def update_plot(attr, old, new):
-    # Atualizar o gráfico com novos eixos
+    # Atualizar o gráfico com os novos valores dos eixos escolhidos
     new_figure = create_figure(x_select.value, y_select.value)
-    layout.children[2] = new_figure
+    layout.children[2] = new_figure  # Substitui o gráfico existente no layout
 
 
 # Associar o callback Python aos seletores
+# Configura o callback para que o gráfico seja atualizado ao mudar o eixo X ou Y
 x_select.on_change("value", update_plot)
 y_select.on_change("value", update_plot)
 
-# Layout da aplicação com os widgets e o gráfico
+# Organizar o layout da aplicação com os widgets e o gráfico
 layout = column(x_select, y_select, p)
 
-# Exibir a aplicação Bokeh
+# Exibir a aplicação Bokeh usando o servidor Bokeh
+# Adiciona o layout ao documento atual, permitindo que o servidor Bokeh o exiba
 curdoc().add_root(layout)
