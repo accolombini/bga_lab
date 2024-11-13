@@ -39,79 +39,91 @@
     Após identificarmos os itemsets frequentes com o FP-Growth, podemos gerar regras de associação usando uma métrica, como confiança ou lift, para avaliar a força dessas regras. O pacote mlxtend, que estamos usando, oferece uma função chamada association_rules que podemos aplicar aos itemsets frequentes para obter regras de associação.
 '''
 
-# Importar bibliotecas necessárias
+# Importar as bibliotecas necessárias
 import pandas as pd
 from mlxtend.frequent_patterns import fpgrowth, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 
 # Carregar o dataset Wine Quality
+# Este dataset contém características físico-químicas de vinhos e uma coluna de qualidade
 url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
 data = pd.read_csv(url, sep=';')
 
 # Transformar a coluna de qualidade em classes binárias: "high" (>=7) e "low" (<7)
+# Facilita a classificação ao dividir o vinho em duas categorias de qualidade
 data['quality_class'] = data['quality'].apply(
     lambda x: 'high' if x >= 7 else 'low')
-data = data.drop(columns=['quality'])
+data = data.drop(columns=['quality'])  # Remover a coluna original de qualidade
 
 # Discretizar as variáveis contínuas em categorias
-# Exemplo de discretização em 3 faixas: baixa, média e alta
-for col in data.columns[:-1]:  # Excluir a coluna de classe para discretização
+# Cada variável contínua é dividida em 3 faixas: baixa, média e alta
+# Esta discretização facilita a aplicação do FP-Growth em dados contínuos
+for col in data.columns[:-1]:  # Exclui a coluna de classe, pois já está categorizada
     data[col] = pd.cut(data[col], bins=3, labels=[
                        f"{col}_low", f"{col}_med", f"{col}_high"])
 
 # Transformar o dataset em uma lista de transações
+# Cada linha do DataFrame é convertida em uma lista de itens discretizados
+# Exemplo: ['fixed acidity_low', 'citric acid_med', ...]
 transactions = data.apply(lambda row: row.dropna().tolist(), axis=1).tolist()
 
 # Codificar as transações para uso no FP-Growth
+# TransactionEncoder converte a lista de itens em uma matriz binária onde:
+# - Cada coluna representa um item
+# - Cada linha representa uma transação (1 indica presença do item, 0 ausência)
 te = TransactionEncoder()
 te_ary = te.fit(transactions).transform(transactions)
 df = pd.DataFrame(te_ary, columns=te.columns_)
 
 # Aplicar o FP-Growth para encontrar itemsets frequentes
-min_support = 0.05  # Ajuste conforme necessário
+# min_support define o suporte mínimo necessário para que um itemset seja considerado frequente
+# Ajuste este parâmetro conforme necessário para encontrar mais ou menos padrões
+min_support = 0.05
 frequent_itemsets = fpgrowth(df, min_support=min_support, use_colnames=True)
 
-# Ordenar os padrões por suporte e selecionar os 10 com maior e menor suporte
+# Ordenar os itemsets por suporte e exibir os 10 mais frequentes e os 10 menos frequentes
+# Isso ajuda a identificar os padrões mais e menos comuns no dataset
 top_frequent_itemsets = frequent_itemsets.sort_values(
     by="support", ascending=False).head(10)
 bottom_frequent_itemsets = frequent_itemsets.sort_values(
     by="support", ascending=True).head(10)
 
-# Reformatação dos dados para uma visualização mais didática
+# Reformatação dos itemsets para uma visualização mais clara
+# Converte cada conjunto de itens em uma string de itens separados por vírgula
 top_frequent_itemsets['itemsets'] = top_frequent_itemsets['itemsets'].apply(
     lambda x: ', '.join(list(x)))
 bottom_frequent_itemsets['itemsets'] = bottom_frequent_itemsets['itemsets'].apply(
     lambda x: ', '.join(list(x)))
 
-# Exibir padrões frequentes
+# Exibir os itemsets mais frequentes
 print("Padrões Frequentes (Top 10 - Maior Suporte):")
 print("Cada linha exibe um conjunto de características discretizadas com um suporte alto na base de dados.\n")
 print(top_frequent_itemsets.to_string(
     index=False, header=["Suporte", "Conjunto de Itens"]))
 
+# Exibir os itemsets menos frequentes
 print("\nPadrões Frequentes (Bottom 10 - Menor Suporte):")
 print("Cada linha exibe um conjunto de características discretizadas com um suporte baixo na base de dados.\n")
 print(bottom_frequent_itemsets.to_string(
     index=False, header=["Suporte", "Conjunto de Itens"]))
+
 '''
 # Gerar regras de associação a partir dos itemsets frequentes
-min_confidence = 0.3  # Ajuste conforme necessário para as regras
-rules = association_rules(
-    frequent_itemsets, metric="confidence", min_threshold=min_confidence)
+# min_confidence define a confiança mínima para considerar uma regra válida
+min_confidence = 0.3  # Ajuste conforme necessário para obter mais ou menos regras
+rules = association_rules(frequent_itemsets, metric="confidence", min_threshold=min_confidence)
 
 # Filtrar as colunas de interesse para exibir as regras de associação e criar uma cópia explícita
-rules_display = rules[['antecedents', 'consequents',
-                       'support', 'confidence', 'lift']].copy()
+# A cópia evita warnings sobre modificações diretas em fatias do DataFrame
+rules_display = rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].copy()
 
-# Reformatação das regras para uma visualização mais didática
-rules_display['antecedents'] = rules_display['antecedents'].apply(
-    lambda x: ', '.join(list(x)))
-rules_display['consequents'] = rules_display['consequents'].apply(
-    lambda x: ', '.join(list(x)))
+# Reformatação dos antecedentes e consequentes para uma visualização mais clara
+# Converte cada conjunto de antecedentes/consequentes em uma string de itens separados por vírgula
+rules_display['antecedents'] = rules_display['antecedents'].apply(lambda x: ', '.join(list(x)))
+rules_display['consequents'] = rules_display['consequents'].apply(lambda x: ', '.join(list(x)))
 
 # Exibir as regras de associação
 print("\nRegras de Associação:")
 print("Cada linha exibe uma regra que relaciona um conjunto de características (antecedentes) com uma consequência (consequentes).\n")
-print(rules_display.to_string(index=False, header=[
-      "Antecedentes", "Consequentes", "Suporte", "Confiança", "Lift"]))
+print(rules_display.to_string(index=False, header=["Antecedentes", "Consequentes", "Suporte", "Confiança", "Lift"]))
 '''

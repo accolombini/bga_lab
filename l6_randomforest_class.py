@@ -36,8 +36,7 @@
 '''
 
 
-# Importar bibliotecas necessárias
-
+# Importar as bibliotecas necessárias
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
@@ -46,29 +45,40 @@ import numpy as np
 from sklearn.tree import export_text
 
 # Carregar o dataset Wine Quality
+# Este dataset contém características físico-químicas de vinhos e uma coluna de qualidade
 url = "https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv"
 data = pd.read_csv(url, sep=';')
 
 # Transformar a coluna de qualidade em classes binárias: "high" (>=7) e "low" (<7)
+# Facilita a classificação ao dividir o vinho em duas categorias de qualidade
 data['quality_class'] = data['quality'].apply(
     lambda x: 'high' if x >= 7 else 'low')
-data = data.drop(columns=['quality'])
+data = data.drop(columns=['quality'])  # Remover a coluna original de qualidade
 
-# Dividir dados em treino e teste
-X_train, X_test, y_train, y_test = train_test_split(data.drop(
-    columns=['quality_class']), data['quality_class'], test_size=0.3, random_state=42)
+# Dividir dados em conjuntos de treino e teste
+# Usamos 70% dos dados para treino e 30% para teste para avaliar o modelo
+X_train, X_test, y_train, y_test = train_test_split(
+    data.drop(columns=['quality_class']),  # Características do vinho
+    data['quality_class'],                 # Rótulo binário de qualidade
+    test_size=0.3,                         # Proporção de dados para teste
+    random_state=42                        # Seed para reprodutibilidade
+)
 
 # Criar e treinar o modelo Random Forest
-clf = RandomForestClassifier(n_estimators=100, random_state=42)
-clf.fit(X_train, y_train)
+# Random Forest é um modelo de classificação baseado em múltiplas árvores de decisão
+clf = RandomForestClassifier(
+    n_estimators=100, random_state=42)  # 100 árvores na floresta
+clf.fit(X_train, y_train)  # Treinar o modelo usando o conjunto de treino
 
-# Fazer previsões
+# Fazer previsões no conjunto de teste
 predictions = clf.predict(X_test)
 
 # Avaliar o desempenho do classificador
+# Exibe precisão, recall e f1-score para as classes "high" e "low"
 print(classification_report(y_test, predictions, labels=['high', 'low']))
 
 # Mostrar Importâncias das Características
+# Identifica as características mais influentes no modelo Random Forest
 feature_importances = pd.DataFrame({
     'feature': X_train.columns,
     'importance': clf.feature_importances_
@@ -76,8 +86,9 @@ feature_importances = pd.DataFrame({
 
 print("Importâncias das Características:\n", feature_importances)
 
-# Exibir regras de uma árvore individual no Random Forest
-# Escolher uma árvore para exemplificar as regras
-tree_sample = clf.estimators_[0]
-tree_rules = export_text(tree_sample, feature_names=list(X_train.columns))
+# Exibir regras de uma árvore individual dentro do Random Forest
+# Escolhemos uma das árvores da floresta para visualizar suas regras
+tree_sample = clf.estimators_[0]  # Selecionar a primeira árvore como exemplo
+tree_rules = export_text(tree_sample, feature_names=list(
+    X_train.columns))  # Extrair regras em formato de texto
 print("\nAmostra de Regras de uma Árvore do Random Forest:\n", tree_rules)
